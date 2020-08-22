@@ -2,7 +2,7 @@
 #include <pulse/pulseaudio.h>
 
 /** Gets called when PulseAudio successfully fetched sink information. */
-void sink_info_callback(pa_context* c, const pa_sink_info* i, int eol, void* userdata)
+static void sink_info_callback(pa_context* c, const pa_sink_info* i, int eol, void* userdata)
 {
     if (!i) {
         return;
@@ -25,14 +25,14 @@ void sink_info_callback(pa_context* c, const pa_sink_info* i, int eol, void* use
 }
 
 /** Gets called when some sink event occurred. */
-void sink_update_handler(pa_context* c, pa_subscription_event_type_t t, uint32_t idx, void* userdata) {
+static void sink_update_handler(pa_context* c, pa_subscription_event_type_t t, uint32_t idx, void* userdata) {
     if ((t & PA_SUBSCRIPTION_EVENT_FACILITY_MASK) == PA_SUBSCRIPTION_EVENT_SINK) {
         pa_context_get_sink_info_by_index(c, idx, sink_info_callback, userdata);
     }
 }
 
 /** Gets called when PulseAudio context state gets updated. */
-void context_state_update_handler(pa_context* c, void* userdata) {
+static void context_state_update_handler(pa_context* c, void* userdata) {
     switch (pa_context_get_state(c)) {
     case PA_CONTEXT_CONNECTING:
     case PA_CONTEXT_AUTHORIZING:
@@ -73,7 +73,7 @@ int main() {
         return 1;
     }
 
-    pa_volume_t last_volume = 00;
+    pa_volume_t last_volume;
 
     // Set callback for state updates.
     pa_context_set_state_callback(_context, context_state_update_handler, &last_volume);
@@ -84,6 +84,9 @@ int main() {
     // Run PulseAudio main loop.
     int ret = 1;
     pa_mainloop_run(_mainloop, &ret);
+
+    pa_context_unref(_context);
+    pa_mainloop_free(_mainloop);
 
     return ret;
 }
