@@ -63,14 +63,14 @@ static void context_state_update_handler(pa_context* c, void* userdata) {
 int main() {
     pa_mainloop* _mainloop = pa_mainloop_new();
     if (!_mainloop) {
-        fprintf(stderr, "pa_mainloop_new() failed.\n");
-        return 1;
+        perror("pa_mainloop_new failed");
+        exit(EXIT_FAILURE);
     }
 
     pa_context* _context = pa_context_new(pa_mainloop_get_api(_mainloop), "listenvol");
     if (!_context) {
-        fprintf(stderr, "pa_context_new() failed\n");
-        return 1;
+        perror("pa_context_new failed");
+        exit(EXIT_FAILURE);
     }
 
     pa_volume_t last_volume;
@@ -79,7 +79,10 @@ int main() {
     pa_context_set_state_callback(_context, context_state_update_handler, &last_volume);
 
     // Subscribe to context state updates.
-    pa_context_connect(_context, NULL, PA_CONTEXT_NOAUTOSPAWN, NULL);
+    if (pa_context_connect(_context, NULL, PA_CONTEXT_NOAUTOSPAWN, NULL) < 0) {
+        perror("pa_context_connect failed");
+        exit(EXIT_FAILURE);
+    }
 
     // Run PulseAudio main loop.
     int ret = 1;
