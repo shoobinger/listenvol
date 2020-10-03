@@ -8,19 +8,20 @@ static void sink_info_callback(pa_context* c, const pa_sink_info* i, int eol, vo
         return;
     }
 
-    pa_volume_t* last_volume = (pa_volume_t*)userdata;
+    float* last_volume = (float*)userdata;
 
     pa_volume_t new_volume = pa_cvolume_avg(&(i->volume));
 
+    float new_volume_level = (float)new_volume / (float)PA_VOLUME_NORM * 100.0f;
+    float last_volume_level = (float)*last_volume / (float)PA_VOLUME_NORM * 100.0f;
+
     // Skip events that don't reflect actual volume updates.
-    if (*last_volume == new_volume) {
+    if ((int) new_volume_level == (int) last_volume_level) {
         return;
     }
     *last_volume = new_volume;
 
-    float volume = (float)new_volume / (float)PA_VOLUME_NORM;
-
-    fprintf(stdout, "%.0f\n", volume * 100.0f);
+    fprintf(stdout, "%.0f\n", new_volume_level);
     fflush(stdout);
 }
 
@@ -73,10 +74,14 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    pa_volume_t last_volume;
+    float* last_volume = malloc(sizeof(float));
+    if (last_volume == NULL) {
+        perror("Can't initialize memory for last_volume: malloc returned NULL.");
+        exit(EXIT_FAILURE);
+    }
 
     // Set callback for state updates.
-    pa_context_set_state_callback(_context, context_state_update_handler, &last_volume);
+    pa_context_set_state_callback(_context, context_state_update_handler, last_volume);
 
     // Subscribe to context state updates.
     if (pa_context_connect(_context, NULL, PA_CONTEXT_NOAUTOSPAWN, NULL) < 0) {
@@ -90,6 +95,8 @@ int main() {
 
     pa_context_unref(_context);
     pa_mainloop_free(_mainloop);
+
+    free(last_volume);
 
     return ret;
 }
